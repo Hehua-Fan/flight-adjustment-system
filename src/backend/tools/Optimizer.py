@@ -19,16 +19,28 @@ class Optimizer:
         model.flights = pyo.Set(initialize=flights_df.index)
 
         # --- 决策与辅助变量 ---
-        model.x = pyo.Var(model.flights, within=pyo.Binary)
-        model.d = pyo.Var(model.flights, within=pyo.NonNegativeReals)
-        model.l = pyo.Var(model.flights, within=pyo.Binary)
+        # 基本执行决策
+        model.x = pyo.Var(model.flights, within=pyo.Binary)  # 是否执行航班
+        model.d = pyo.Var(model.flights, within=pyo.NonNegativeReals)  # 延误时间
+        model.l = pyo.Var(model.flights, within=pyo.Binary)  # 是否严重晚点
+        
+        # 6种调整动作的决策变量
+        model.change_time = pyo.Var(model.flights, within=pyo.Binary)     # 变更时刻
+        model.change_aircraft = pyo.Var(model.flights, within=pyo.Binary)  # 更换飞机
+        model.cancel_flight = pyo.Var(model.flights, within=pyo.Binary)    # 取消航班
+        model.change_airport = pyo.Var(model.flights, within=pyo.Binary)   # 变更机场
+        model.change_nature = pyo.Var(model.flights, within=pyo.Binary)    # 变更性质
+        model.add_flight = pyo.Var(model.flights, within=pyo.Binary)       # 新增航班
+        
+        # 时间相关辅助变量
         model.departure_day_offset = pyo.Var(model.flights, within=pyo.NonNegativeIntegers)
         model.arrival_day_offset = pyo.Var(model.flights, within=pyo.NonNegativeIntegers)
         model.dep_time_of_day = pyo.Var(model.flights, within=pyo.NonNegativeReals, bounds=(0, 24*60))
         model.arr_time_of_day = pyo.Var(model.flights, within=pyo.NonNegativeReals, bounds=(0, 24*60))
 
         # --- 目标函数 ---
-        revenue_loss = sum((1 - model.x[f]) * flights_df.loc[f, 'revenue'] for f in model.flights)
+        # 基础成本项
+        revenue_loss = sum(model.cancel_flight[f] * flights_df.loc[f, 'revenue'] for f in model.flights)
         total_delay = sum(model.d[f] for f in model.flights)
         
         # 根据实际列名获取旅客数
@@ -40,11 +52,25 @@ class Optimizer:
             late_pax_impact = sum(model.l[f] * 150 for f in model.flights)  # 默认150人
             late_revenue_loss = sum(model.l[f] * 150 * 200 for f in model.flights)
 
+        # 6种调整动作的成本
+        change_time_cost = sum(model.change_time[f] * 500 for f in model.flights)      # 变更时刻成本
+        change_aircraft_cost = sum(model.change_aircraft[f] * 15000 for f in model.flights)  # 更换飞机成本
+        cancel_flight_cost = sum(model.cancel_flight[f] * 30000 for f in model.flights)     # 取消航班成本
+        change_airport_cost = sum(model.change_airport[f] * 8000 for f in model.flights)    # 变更机场成本
+        change_nature_cost = sum(model.change_nature[f] * 2000 for f in model.flights)      # 变更性质成本
+        add_flight_cost = sum(model.add_flight[f] * 25000 for f in model.flights)           # 新增航班成本
+
         model.objective = pyo.Objective(
-            expr = weights['cancel'] * revenue_loss + \
-                   weights['delay'] * total_delay + \
-                   weights['late_pax'] * late_pax_impact + \
-                   weights['revenue'] * late_revenue_loss,
+            expr = weights.get('cancel', 1.0) * revenue_loss + \
+                   weights.get('delay', 0.1) * total_delay + \
+                   weights.get('late_pax', 0.5) * late_pax_impact + \
+                   weights.get('revenue', 1.0) * late_revenue_loss + \
+                   weights.get('change_time', 0.1) * change_time_cost + \
+                   weights.get('change_aircraft', 0.3) * change_aircraft_cost + \
+                   weights.get('cancel_flight', 1.0) * cancel_flight_cost + \
+                   weights.get('change_airport', 0.2) * change_airport_cost + \
+                   weights.get('change_nature', 0.05) * change_nature_cost + \
+                   weights.get('add_flight', 0.4) * add_flight_cost,
             sense=pyo.minimize
         )
 
@@ -63,6 +89,18 @@ class Optimizer:
 
         for f in model.flights:
             flight = flights_df.loc[f]
+            
+            # 6种调整动作的互斥约束
+            model.constraints.add(
+                model.change_time[f] + model.change_aircraft[f] + model.cancel_flight[f] + 
+                model.change_airport[f] + model.change_nature[f] + model.add_flight[f] <= 1
+            )
+            
+            # 执行与取消的关系约束
+            model.constraints.add(model.x[f] == 1 - model.cancel_flight[f])
+            
+            # 延误只有在变更时刻时才有效
+            model.constraints.add(model.d[f] <= BIG_M * model.change_time[f])
             
             # 基础约束：'严重晚点'变量l_f的定义
             stot_col = '计划起飞时间' if '计划起飞时间' in flights_df.columns else 'STOT'
@@ -165,6 +203,26 @@ class Optimizer:
             columns_to_keep.append('target_departure_time')
         
         res_df = flights_df[columns_to_keep].copy()
+        
+        # 确定调整动作类型
+        adjustment_actions = []
+        for f in model.flights:
+            if pyo.value(model.change_time[f]) > 0.5:
+                adjustment_actions.append('变更时刻')
+            elif pyo.value(model.change_aircraft[f]) > 0.5:
+                adjustment_actions.append('更换飞机')
+            elif pyo.value(model.cancel_flight[f]) > 0.5:
+                adjustment_actions.append('取消航班')
+            elif pyo.value(model.change_airport[f]) > 0.5:
+                adjustment_actions.append('变更机场')
+            elif pyo.value(model.change_nature[f]) > 0.5:
+                adjustment_actions.append('变更性质')
+            elif pyo.value(model.add_flight[f]) > 0.5:
+                adjustment_actions.append('新增航班')
+            else:
+                adjustment_actions.append('正常执行')
+        
+        res_df['adjustment_action'] = adjustment_actions
         res_df['status'] = ['执行' if pyo.value(model.x[f]) > 0.5 else '取消' for f in model.flights]
         res_df['additional_delay_minutes'] = [round(pyo.value(model.d[f]), 1) for f in model.flights]
         
@@ -172,6 +230,15 @@ class Optimizer:
             lambda row: row['target_departure_time'] + timedelta(minutes=row['additional_delay_minutes']) if row['status'] == '执行' else pd.NaT,
             axis=1
         )
+        
+        # 添加6种调整动作的具体信息
+        res_df['change_time'] = [pyo.value(model.change_time[f]) > 0.5 for f in model.flights]
+        res_df['change_aircraft'] = [pyo.value(model.change_aircraft[f]) > 0.5 for f in model.flights]
+        res_df['cancel_flight'] = [pyo.value(model.cancel_flight[f]) > 0.5 for f in model.flights]
+        res_df['change_airport'] = [pyo.value(model.change_airport[f]) > 0.5 for f in model.flights]
+        res_df['change_nature'] = [pyo.value(model.change_nature[f]) > 0.5 for f in model.flights]
+        res_df['add_flight'] = [pyo.value(model.add_flight[f]) > 0.5 for f in model.flights]
+        
         return res_df
     
     def _apply_airport_restrictions(self, model, f, flight, airport_res_df, constraint_counts, BIG_M):

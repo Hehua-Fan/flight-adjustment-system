@@ -32,23 +32,55 @@ class MasterAgent:
         """
         analysis = self.invoke(llm_prompt)
         
-        # 基于事件类型生成权重方案
+        # 基于事件类型生成权重方案（包含6种调整动作）
         if "流量控制" in event_description:
             print("[MasterAgent]: 判断为流量控制事件，生成对应权重方案。")
-            weights_A = {'cancel': 1.0, 'delay': 0.1, 'late_pax': 0.5, 'revenue': 1.0}
-            weights_B = {'cancel': 0.5, 'delay': 1.0, 'late_pax': 1.0, 'revenue': 0.2}
+            weights_A = {
+                'cancel': 1.0, 'delay': 0.1, 'late_pax': 0.5, 'revenue': 1.0,
+                'change_time': 0.2, 'change_aircraft': 0.8, 'cancel_flight': 1.0,
+                'change_airport': 0.6, 'change_nature': 0.3, 'add_flight': 0.9
+            }
+            weights_B = {
+                'cancel': 0.5, 'delay': 1.0, 'late_pax': 1.0, 'revenue': 0.2,
+                'change_time': 0.1, 'change_aircraft': 0.4, 'cancel_flight': 0.8,
+                'change_airport': 0.3, 'change_nature': 0.2, 'add_flight': 0.5
+            }
         elif "天气" in event_description:
             print("[MasterAgent]: 判断为天气事件，生成对应权重方案。")
-            weights_A = {'cancel': 0.8, 'delay': 0.3, 'late_pax': 1.0, 'revenue': 0.8}
-            weights_B = {'cancel': 0.3, 'delay': 1.5, 'late_pax': 1.2, 'revenue': 0.5}
+            weights_A = {
+                'cancel': 0.8, 'delay': 0.3, 'late_pax': 1.0, 'revenue': 0.8,
+                'change_time': 0.3, 'change_aircraft': 0.5, 'cancel_flight': 0.8,
+                'change_airport': 0.4, 'change_nature': 0.2, 'add_flight': 0.7
+            }
+            weights_B = {
+                'cancel': 0.3, 'delay': 1.5, 'late_pax': 1.2, 'revenue': 0.5,
+                'change_time': 0.2, 'change_aircraft': 0.3, 'cancel_flight': 0.5,
+                'change_airport': 0.7, 'change_nature': 0.1, 'add_flight': 0.4
+            }
         elif "设备故障" in event_description:
             print("[MasterAgent]: 判断为设备故障事件，生成对应权重方案。")
-            weights_A = {'cancel': 1.2, 'delay': 0.2, 'late_pax': 0.8, 'revenue': 1.0}
-            weights_B = {'cancel': 0.6, 'delay': 1.3, 'late_pax': 1.0, 'revenue': 0.4}
+            weights_A = {
+                'cancel': 1.2, 'delay': 0.2, 'late_pax': 0.8, 'revenue': 1.0,
+                'change_time': 0.4, 'change_aircraft': 1.0, 'cancel_flight': 1.2,
+                'change_airport': 0.8, 'change_nature': 0.3, 'add_flight': 1.0
+            }
+            weights_B = {
+                'cancel': 0.6, 'delay': 1.3, 'late_pax': 1.0, 'revenue': 0.4,
+                'change_time': 0.2, 'change_aircraft': 0.6, 'cancel_flight': 0.8,
+                'change_airport': 0.5, 'change_nature': 0.2, 'add_flight': 0.6
+            }
         else:
             print("[MasterAgent]: 使用默认权重方案。")
-            weights_A = {'cancel': 1.0, 'delay': 0.1, 'late_pax': 0.5, 'revenue': 1.0}
-            weights_B = {'cancel': 0.5, 'delay': 1.0, 'late_pax': 1.0, 'revenue': 0.2}
+            weights_A = {
+                'cancel': 1.0, 'delay': 0.1, 'late_pax': 0.5, 'revenue': 1.0,
+                'change_time': 0.2, 'change_aircraft': 0.8, 'cancel_flight': 1.0,
+                'change_airport': 0.6, 'change_nature': 0.3, 'add_flight': 0.9
+            }
+            weights_B = {
+                'cancel': 0.5, 'delay': 1.0, 'late_pax': 1.0, 'revenue': 0.2,
+                'change_time': 0.1, 'change_aircraft': 0.4, 'cancel_flight': 0.8,
+                'change_airport': 0.3, 'change_nature': 0.2, 'add_flight': 0.5
+            }
         
         return {
             "方案A (成本优先)": weights_A, 

@@ -70,28 +70,68 @@ class ExecutorAgent:
         # 兼容不同的列名
         flight_number = flight_row.get('航班号', flight_row.get('flight_number', 'UNKNOWN'))
         
-        if flight_row['status'] == '取消':
+        # 根据adjustment_action字段生成对应的指令
+        action = flight_row.get('adjustment_action', '正常执行')
+        
+        if action == '取消航班':
             instruction = {
-                'type': 'CANCEL',
+                'type': 'CANCEL_FLIGHT',
                 'flight_number': flight_number,
                 'reason': '根据运行优化决策',
-                'message': f"取消航班 {flight_number}"
+                'message': f"取消航班 {flight_number}",
+                'compensation_needed': True,
+                'passenger_count': flight_row.get('旅客人数(订座)', 0)
             }
-        else:
-            if flight_row['additional_delay_minutes'] > 0:
-                instruction = {
-                    'type': 'DELAY',
-                    'flight_number': flight_number,
-                    'delay_minutes': flight_row['additional_delay_minutes'],
-                    'new_departure_time': flight_row['adjusted_departure_time'],
-                    'message': f"航班 {flight_number} 延误 {flight_row['additional_delay_minutes']:.0f} 分钟，新起飞时间: {flight_row['adjusted_departure_time'].strftime('%Y-%m-%d %H:%M')}"
-                }
-            else:
-                instruction = {
-                    'type': 'NORMAL',
-                    'flight_number': flight_number,
-                    'message': f"航班 {flight_number} 按原计划执行"
-                }
+        elif action == '变更时刻':
+            instruction = {
+                'type': 'CHANGE_TIME',
+                'flight_number': flight_number,
+                'delay_minutes': flight_row['additional_delay_minutes'],
+                'old_departure_time': flight_row.get('target_departure_time'),
+                'new_departure_time': flight_row.get('adjusted_departure_time'),
+                'message': f"航班 {flight_number} 变更起飞时间，延误 {flight_row['additional_delay_minutes']:.0f} 分钟"
+            }
+        elif action == '更换飞机':
+            instruction = {
+                'type': 'CHANGE_AIRCRAFT',
+                'flight_number': flight_number,
+                'reason': '飞机资源调配',
+                'message': f"航班 {flight_number} 更换执行飞机",
+                'requires_crew_check': True,
+                'requires_maintenance_sign': True
+            }
+        elif action == '变更机场':
+            instruction = {
+                'type': 'CHANGE_AIRPORT',
+                'flight_number': flight_number,
+                'reason': '机场运营调整',
+                'message': f"航班 {flight_number} 变更起降机场",
+                'requires_atc_approval': True,
+                'requires_passenger_notice': True
+            }
+        elif action == '变更性质':
+            instruction = {
+                'type': 'CHANGE_NATURE',
+                'flight_number': flight_number,
+                'reason': '运营性质调整',
+                'message': f"航班 {flight_number} 变更航班性质",
+                'requires_regulatory_approval': True
+            }
+        elif action == '新增航班':
+            instruction = {
+                'type': 'ADD_FLIGHT',
+                'flight_number': flight_number,
+                'reason': '运力补充或补偿',
+                'message': f"新增航班 {flight_number}",
+                'requires_slot_allocation': True,
+                'requires_crew_assignment': True
+            }
+        else:  # 正常执行
+            instruction = {
+                'type': 'NORMAL',
+                'flight_number': flight_number,
+                'message': f"航班 {flight_number} 按原计划执行"
+            }
         
         return instruction
     
@@ -102,11 +142,19 @@ class ExecutorAgent:
         # 这里可以集成真实的系统接口
         # 例如：调用航班管理系统API、发送通知等
         
-        if instruction['type'] == 'CANCEL':
+        if instruction['type'] == 'CANCEL_FLIGHT':
             self._handle_cancellation(instruction, flight_row)
-        elif instruction['type'] == 'DELAY':
-            self._handle_delay(instruction, flight_row)
-        else:
+        elif instruction['type'] == 'CHANGE_TIME':
+            self._handle_time_change(instruction, flight_row)
+        elif instruction['type'] == 'CHANGE_AIRCRAFT':
+            self._handle_aircraft_change(instruction, flight_row)
+        elif instruction['type'] == 'CHANGE_AIRPORT':
+            self._handle_airport_change(instruction, flight_row)
+        elif instruction['type'] == 'CHANGE_NATURE':
+            self._handle_nature_change(instruction, flight_row)
+        elif instruction['type'] == 'ADD_FLIGHT':
+            self._handle_flight_addition(instruction, flight_row)
+        else:  # NORMAL
             self._handle_normal_execution(instruction, flight_row)
     
     def _handle_cancellation(self, instruction, flight_row):
@@ -118,14 +166,44 @@ class ExecutorAgent:
         # 4. 释放资源
         print(f"    └─ 处理取消指令：通知相关部门，安排旅客改签")
     
-    def _handle_delay(self, instruction, flight_row):
-        """处理航班延误"""
+    def _handle_time_change(self, instruction, flight_row):
+        """处理时刻变更"""
         # 在真实系统中，这里会：
         # 1. 更新航班时刻表
         # 2. 通知机组和地服
         # 3. 发布旅客通告
         # 4. 调整资源配置
-        print(f"    └─ 处理延误指令：更新时刻表，通知机组，发布旅客公告")
+        print(f"    └─ 处理时刻变更：延误 {instruction.get('delay_minutes', 0):.0f} 分钟，更新系统时间")
+    
+    def _handle_aircraft_change(self, instruction, flight_row):
+        """处理飞机更换"""
+        print("    └─ 处理飞机更换：协调机务、机组，确保资源到位")
+        if instruction.get('requires_crew_check'):
+            print("    └─ 正在检查机组资质和适配性")
+        if instruction.get('requires_maintenance_sign'):
+            print("    └─ 正在获取机务签署")
+    
+    def _handle_airport_change(self, instruction, flight_row):
+        """处理机场变更"""
+        print("    └─ 处理机场变更：申请空管审批，协调地面保障")
+        if instruction.get('requires_atc_approval'):
+            print("    └─ 正在申请空管部门审批")
+        if instruction.get('requires_passenger_notice'):
+            print("    └─ 正在通知旅客机场变更信息")
+    
+    def _handle_nature_change(self, instruction, flight_row):
+        """处理性质变更"""
+        print("    └─ 处理性质变更：申请监管审批，更新航班属性")
+        if instruction.get('requires_regulatory_approval'):
+            print("    └─ 正在申请监管部门审批")
+    
+    def _handle_flight_addition(self, instruction, flight_row):
+        """处理新增航班"""
+        print("    └─ 处理新增航班：分配时刻、机组，申请必要许可")
+        if instruction.get('requires_slot_allocation'):
+            print("    └─ 正在申请机场时刻分配")
+        if instruction.get('requires_crew_assignment'):
+            print("    └─ 正在安排机组人员")
     
     def _handle_normal_execution(self, instruction, flight_row):
         """处理正常执行"""
