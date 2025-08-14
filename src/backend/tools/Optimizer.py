@@ -116,14 +116,28 @@ class Optimizer:
     def solve_model(self, model, solver_name='glpk'):
         """求解优化模型并返回结果"""
         print("开始求解模型...")
-        solver = pyo.SolverFactory(solver_name) 
-        result = solver.solve(model, tee=False) 
-        print(f"求解完成，求解器状态: {result.solver.status}, 终止条件: {result.solver.termination_condition}")
+        solver = pyo.SolverFactory(solver_name)
         
-        if result.solver.termination_condition == pyo.TerminationCondition.optimal:
-            return result
-        else:
-            print("未能找到最优解。")
+        # 设置求解器选项
+        if solver_name == 'glpk':
+            # 设置更长的超时时间和其他选项
+            solver.options['tmlim'] = 300  # 300秒超时
+            solver.options['mipgap'] = 0.05  # 5% MIP gap tolerance
+        
+        try:
+            result = solver.solve(model, tee=False)
+            print(f"求解完成，求解器状态: {result.solver.status}, 终止条件: {result.solver.termination_condition}")
+            
+            if result.solver.termination_condition == pyo.TerminationCondition.optimal:
+                return result
+            elif result.solver.termination_condition == pyo.TerminationCondition.feasible:
+                print("找到可行解（但可能不是最优解）")
+                return result
+            else:
+                print("未能找到最优解。")
+                return None
+        except Exception as e:
+            print(f"求解过程中出现错误: {e}")
             return None
     
     def get_optimization_results(self, model, flights_df, result):
@@ -185,11 +199,17 @@ class Optimizer:
                 # 处理跨天的宵禁时间
                 if curfew_start > curfew_end:
                     # 跨天宵禁：不允许在 curfew_start 到 curfew_end 之间起飞
-                    model.constraints.add(
-                        (model.dep_time_of_day[f] <= curfew_start) + 
-                        (model.dep_time_of_day[f] >= curfew_end) >= 
-                        1 - BIG_M * (1 - model.x[f])
-                    )
+                    # 引入二元变量来处理逻辑约束
+                    binary_var_name = f'curfew_dep_{f}_{len(model.constraints)}'
+                    setattr(model, binary_var_name, pyo.Var(within=pyo.Binary))
+                    binary_var = getattr(model, binary_var_name)
+                    
+                    # binary_var = 1 当且仅当起飞时间满足宵禁要求
+                    model.constraints.add(model.dep_time_of_day[f] <= curfew_start + BIG_M * (1 - binary_var))
+                    model.constraints.add(model.dep_time_of_day[f] >= curfew_end - BIG_M * binary_var)
+                    
+                    # 如果航班执行，必须满足宵禁要求
+                    model.constraints.add(binary_var >= model.x[f])
                     constraint_counts['airport_curfew'] += 1
                     
             except (ValueError, KeyError):
@@ -215,11 +235,17 @@ class Optimizer:
                 # 处理跨天的宵禁时间
                 if curfew_start > curfew_end:
                     # 跨天宵禁：不允许在 curfew_start 到 curfew_end 之间到达
-                    model.constraints.add(
-                        (model.arr_time_of_day[f] <= curfew_start) + 
-                        (model.arr_time_of_day[f] >= curfew_end) >= 
-                        1 - BIG_M * (1 - model.x[f])
-                    )
+                    # 引入二元变量来处理逻辑约束
+                    binary_var_name = f'curfew_arr_{f}_{len(model.constraints)}'
+                    setattr(model, binary_var_name, pyo.Var(within=pyo.Binary))
+                    binary_var = getattr(model, binary_var_name)
+                    
+                    # binary_var = 1 当且仅当到达时间满足宵禁要求
+                    model.constraints.add(model.arr_time_of_day[f] <= curfew_start + BIG_M * (1 - binary_var))
+                    model.constraints.add(model.arr_time_of_day[f] >= curfew_end - BIG_M * binary_var)
+                    
+                    # 如果航班执行，必须满足宵禁要求
+                    model.constraints.add(binary_var >= model.x[f])
                     constraint_counts['airport_curfew'] += 1
                     
             except (ValueError, KeyError):

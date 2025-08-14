@@ -4,21 +4,22 @@ import pandas as pd
 
 class ExecutorAgent:
     """运行执行智能体 - 负责执行最终的调整指令"""
-    
+
     def __init__(self):
         self.client = ChatClient(
-    agent_id="7e46d18945fc49379063e3057a143c58",
-    personal_auth_key="339859fa69934ea8b2b0ebd19d94d7f1",
-    personal_auth_secret="93TsBecJplOawEipqAdF7TJ0g4IoBMtA"
-)
+            agent_id="1b0e78e1bc1f475d9856123506e39ef5",
+            personal_auth_key="7217394b7d3e4becab017447adeac239",
+            personal_auth_secret="f4Ziua6B0NexIMBGj1tQEVpe62EhkCWB"
+        )
         self.execution_log = []
 
     def invoke(self, prompt: str):
         """通用的LLM调用接口"""
         content = ""
         for event in self.client.invoke(prompt):
-            print(event.content, end="", flush=True)
-            content += event.content
+            if event['type'] == 'token':
+                content += event['content']
+                print(event['content'], end="", flush=True)
         return content
     
     def execute_plan(self, chosen_plan):
@@ -66,7 +67,8 @@ class ExecutorAgent:
     
     def _generate_instruction(self, flight_row):
         """生成单个航班的调整指令"""
-        flight_number = flight_row['flight_number']
+        # 兼容不同的列名
+        flight_number = flight_row.get('航班号', flight_row.get('flight_number', 'UNKNOWN'))
         
         if flight_row['status'] == '取消':
             instruction = {

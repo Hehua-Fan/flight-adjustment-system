@@ -5,17 +5,18 @@ class MasterAgent:
     
     def __init__(self):
         self.client = ChatClient(
-    agent_id="7e46d18945fc49379063e3057a143c58",
-    personal_auth_key="339859fa69934ea8b2b0ebd19d94d7f1",
-    personal_auth_secret="93TsBecJplOawEipqAdF7TJ0g4IoBMtA"
-)
+            agent_id="1b0e78e1bc1f475d9856123506e39ef5",
+            personal_auth_key="7217394b7d3e4becab017447adeac239",
+            personal_auth_secret="f4Ziua6B0NexIMBGj1tQEVpe62EhkCWB"
+        )
 
     def invoke(self, prompt: str):
         """通用的LLM调用接口"""
         content = ""
         for event in self.client.invoke(prompt):
-            print(event.content, end="", flush=True)
-            content += event.content
+            if event['type'] == 'token':
+                content += event['content']
+                print(event['content'], end="", flush=True)
         return content
     
     def get_weights(self, event_description):
@@ -110,7 +111,3 @@ if __name__ == "__main__":
     event = "上海区域流量控制，多个航班收到CTOT指令"
     weights = master_agent.get_weights(event)
     print(f"生成的权重方案: {weights}")
-    
-    # 测试通用调用功能
-    response = master_agent.invoke("Hello, how are you?")
-    print(f"LLM响应: {response}")

@@ -18,7 +18,7 @@ class FlightAdjustmentSystem:
         self.optimizer = Optimizer()           # 优化模型构建和求解
         self.data_loader = DataLoader()        # 数据加载和处理
 
-    def run(self, event_description: str, cdm_data_file_path: str, constraint_dir_path: str) -> bool:
+    def run(self, event_description: str, cdm_data_file_path: str, constraint_dir_path: str):
         """
         运行航班调整场景
         """        

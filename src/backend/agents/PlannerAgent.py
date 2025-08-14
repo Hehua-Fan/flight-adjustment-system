@@ -5,31 +5,30 @@ class PlannerAgent:
     
     def __init__(self):
         self.client = ChatClient(
-            agent_id="7e46d18945fc49379063e3057a143c58",
-            personal_auth_key="339859fa69934ea8b2b0ebd19d94d7f1",
-            personal_auth_secret="93TsBecJplOawEipqAdF7TJ0g4IoBMtA",
-            base_url="https://uat.autoagents.cn"
+            agent_id="1b0e78e1bc1f475d9856123506e39ef5",
+            personal_auth_key="7217394b7d3e4becab017447adeac239",
+            personal_auth_secret="f4Ziua6B0NexIMBGj1tQEVpe62EhkCWB"
         )
 
     def invoke(self, prompt: str):
         """通用的LLM调用接口"""
         content = ""
-        for event in self.client.invoke(prompt="人工智能的历史"):
-            if event['type'] == 'start_bubble':
-                print(f"\n{'=' * 20} 消息气泡{event['bubble_id']}开始 {'=' * 20}")
+        for event in self.client.invoke(prompt):
+            if event['type'] == 'token':
                 content += event['content']
+                print(event['content'], end="", flush=True)
         return content
     
-    def create_adjustment_plan(self, flights_df, airport_res_df, weights, optimizer):
+    def create_adjustment_plan(self, flights_df, constraint_data, weights, optimizer):
         """创建航班调整计划"""
         print(f"[PlannerAgent]: 收到规划指令，正在使用权重 {list(weights.values())} 进行优化...")
         
         # 可以调用LLM来分析数据特征和约束条件
-        data_summary = self._analyze_data_characteristics(flights_df, airport_res_df)
+        data_summary = self._analyze_data_characteristics(flights_df, constraint_data)
         print(f"[PlannerAgent]: 数据分析完成 - {data_summary}")
         
         # 构建优化模型
-        model = optimizer.build_model(flights_df, airport_res_df, weights)
+        model = optimizer.build_model(flights_df, constraint_data, weights)
         
         if model is None:
             print("[PlannerAgent]: 模型构建失败")
@@ -52,18 +51,26 @@ class PlannerAgent:
             
         return solution_df
     
-    def _analyze_data_characteristics(self, flights_df, airport_res_df):
+    def _analyze_data_characteristics(self, flights_df, constraint_data):
         """分析数据特征"""
         flight_count = len(flights_df)
         
         # 分析航班分布
-        departure_airports = flights_df['departure_airport'].nunique() if 'departure_airport' in flights_df.columns else 0
-        arrival_airports = flights_df['arrival_airport'].nunique() if 'arrival_airport' in flights_df.columns else 0
+        departure_airports = flights_df['计划起飞机场'].nunique() if '计划起飞机场' in flights_df.columns else (
+            flights_df['departure_airport'].nunique() if 'departure_airport' in flights_df.columns else 0
+        )
+        arrival_airports = flights_df['计划落地机场'].nunique() if '计划落地机场' in flights_df.columns else (
+            flights_df['arrival_airport'].nunique() if 'arrival_airport' in flights_df.columns else 0
+        )
         
         # 分析限制条件
-        restriction_count = len(airport_res_df) if airport_res_df is not None and not airport_res_df.empty else 0
+        total_restriction_count = 0
+        if constraint_data and isinstance(constraint_data, dict):
+            for constraint_type, df in constraint_data.items():
+                if df is not None and not df.empty:
+                    total_restriction_count += len(df)
         
-        summary = f"航班数量: {flight_count}, 起飞机场: {departure_airports}, 到达机场: {arrival_airports}, 限制条件: {restriction_count}"
+        summary = f"航班数量: {flight_count}, 起飞机场: {departure_airports}, 到达机场: {arrival_airports}, 限制条件: {total_restriction_count}"
         return summary
     
     def validate_plan(self, solution_df, flights_df):
@@ -93,7 +100,7 @@ class PlannerAgent:
         else:
             return True, "方案验证通过"
     
-    def optimize_plan_with_feedback(self, flights_df, airport_res_df, weights, optimizer, feedback=None):
+    def optimize_plan_with_feedback(self, flights_df, constraint_data, weights, optimizer, feedback=None):
         """基于反馈优化调整方案"""
         print(f"[PlannerAgent]: 收到优化反馈，重新规划...")
         
@@ -103,7 +110,7 @@ class PlannerAgent:
             # adjusted_weights = self._adjust_weights_based_on_feedback(weights, feedback)
         
         # 重新生成方案
-        return self.create_adjustment_plan(flights_df, airport_res_df, weights, optimizer)
+        return self.create_adjustment_plan(flights_df, constraint_data, weights, optimizer)
 
 
 if __name__ == "__main__":
