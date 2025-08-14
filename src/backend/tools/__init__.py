@@ -1,4 +1,4 @@
-from .Optimizer import FlightOptimizer
-from .DataLoader import FlightDataLoader
+from .Optimizer import Optimizer
+from .DataLoader import DataLoader
 
-__all__ = ["FlightOptimizer", "FlightDataLoader"]
+__all__ = ["Optimizer", "DataLoader"]
