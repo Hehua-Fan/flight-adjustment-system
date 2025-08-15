@@ -144,10 +144,38 @@ class Optimizer:
             self._apply_airport_special_requirements(model, f, flight, constraint_data.get('airport_special_requirement', pd.DataFrame()), constraint_counts, BIG_M)
         
         # 输出约束应用统计
-        print("[Optimizer]: 约束应用统计:")
+        print("[Optimizer]: ===== 约束应用统计 =====")
+        total_constraints = sum(constraint_counts.values())
+        print(f"✓ 约束总数: {total_constraints} 个")
+        
+        constraint_descriptions = {
+            'airport_curfew': '机场宵禁约束',
+            'flight_restrictions': '航班限制约束',
+            'sector_requirements': '航段特殊要求约束',
+            'must_cancel': '强制取消约束'
+        }
+        
         for constraint_type, count in constraint_counts.items():
+            description = constraint_descriptions.get(constraint_type, constraint_type)
             if count > 0:
-                print(f"  - {constraint_type}: {count} 个")
+                print(f"  ✓ {description}: {count} 个")
+            else:
+                print(f"  - {description}: 0 个")
+        
+        # 输出约束数据文件统计
+        print(f"\n[Optimizer]: ===== 约束数据文件统计 =====")
+        constraint_file_stats = {
+            'airport_restriction': len(constraint_data.get('airport_restriction', pd.DataFrame())),
+            'airport_special_requirement': len(constraint_data.get('airport_special_requirement', pd.DataFrame())),
+            'flight_restriction': len(constraint_data.get('flight_restriction', pd.DataFrame())),
+            'flight_special_requirement': len(constraint_data.get('flight_special_requirement', pd.DataFrame())),
+            'sector_special_requirement': len(constraint_data.get('sector_special_requirement', pd.DataFrame()))
+        }
+        
+        for file_type, count in constraint_file_stats.items():
+            print(f"  ✓ {file_type}: {count} 条记录")
+        
+        print(f"[Optimizer]: =============================")
         
         return model
 

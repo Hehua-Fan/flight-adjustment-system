@@ -9,9 +9,14 @@ class DataLoader:
         """初始化数据加载器"""
         pass
     
-    def load_cdm_data(self, file_path: str):
+    def load_cdm_data(self, file_path: str, test_mode: bool = False, limit_rows: int = 100):
         """
         加载并预处理CDM数据文件
+        
+        Args:
+            file_path: CDM数据文件路径
+            test_mode: 是否启用测试模式
+            limit_rows: 测试模式下限制的行数，默认100行
         """
         
         # 1.读取数据
@@ -26,6 +31,12 @@ class DataLoader:
         except FileNotFoundError:
             print(f"错误：无法找到文件 {file_path}。请确保文件名正确且文件与脚本在同一目录下。")
             return None
+        
+        # 2. 测试模式：限制数据行数
+        original_rows = len(flights_df)
+        if test_mode and original_rows > limit_rows:
+            flights_df = flights_df.head(limit_rows)
+            print(f"⚡ 测试模式：数据已限制为前{limit_rows}行（原始数据: {original_rows}行）")
         
         # 3. 时间格式转换（使用原列名）
         time_cols = ['计划起飞时间', '预计起飞时间', 'CTOT', '预计落地时间']

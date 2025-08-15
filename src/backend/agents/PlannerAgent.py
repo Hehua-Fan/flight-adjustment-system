@@ -70,6 +70,24 @@ class PlannerAgent:
                 if df is not None and not df.empty:
                     total_restriction_count += len(df)
         
+        print(f"[PlannerAgent]: ===== 数据特征分析 =====")
+        print(f"✓ 航班数据:")
+        print(f"  - 总航班数: {flight_count}")
+        print(f"  - 起飞机场数: {departure_airports}")
+        print(f"  - 到达机场数: {arrival_airports}")
+        
+        # 分析约束条件详情
+        print(f"✓ 约束条件详情:")
+        constraint_details = {}
+        if constraint_data and isinstance(constraint_data, dict):
+            for constraint_type, df in constraint_data.items():
+                count = len(df) if df is not None and not df.empty else 0
+                constraint_details[constraint_type] = count
+                print(f"  - {constraint_type}: {count} 条")
+        
+        print(f"  - 总约束条数: {total_restriction_count}")
+        print(f"[PlannerAgent]: ===========================")
+        
         summary = f"航班数量: {flight_count}, 起飞机场: {departure_airports}, 到达机场: {arrival_airports}, 限制条件: {total_restriction_count}"
         return summary
     

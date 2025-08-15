@@ -17,10 +17,22 @@ class FlightAdjustmentSystem:
         self.writer_agent = WriterAgent()      # 航务报告智能体
         self.optimizer = Optimizer()           # 优化模型构建和求解
         self.data_loader = DataLoader()        # 数据加载和处理
+        
+        # 存储最后一次处理的结果
+        self.last_solutions = {}               # 所有生成的方案
+        self.last_chosen_plan_name = None      # 选中的方案名称
+        self.last_final_plan = None            # 最终执行方案
+        self.last_execution_summary = None     # 执行摘要
 
-    def run(self, event_description: str, cdm_data_file_path: str, constraint_dir_path: str):
+    def run(self, event_description: str, cdm_data_file_path: str, constraint_dir_path: str, test_mode: bool = False):
         """
         运行航班调整场景
+        
+        Args:
+            event_description: 事件描述
+            cdm_data_file_path: CDM数据文件路径
+            constraint_dir_path: 约束条件目录路径
+            test_mode: 是否启用测试模式（仅处理前100行数据）
         """        
         try:
             # 1. 指挥智能体分析事件，生成多种策略权重
@@ -28,8 +40,11 @@ class FlightAdjustmentSystem:
             weights = self.master_agent.get_weights(event_description)
             
             # 2. 数据加载器处理最新的CDM数据
-            print("[系统]: 步骤2 - 数据加载和预处理")
-            cdm_data = self.data_loader.load_cdm_data(cdm_data_file_path).copy()
+            if test_mode:
+                print("[系统]: 步骤2 - 数据加载和预处理（测试模式 - 限制100行）")
+            else:
+                print("[系统]: 步骤2 - 数据加载和预处理")
+            cdm_data = self.data_loader.load_cdm_data(cdm_data_file_path, test_mode=test_mode).copy()
             constraint_data = self.data_loader.load_constraint_data(constraint_dir_path, filter_active=True)
 
             # 3. 规划智能体为每种权重方案生成调整计划
@@ -53,7 +68,24 @@ class FlightAdjustmentSystem:
                 
             # 4. 指挥智能体解读方案，并辅助决策出最终计划
             print("[系统]: 步骤4 - 方案分析和决策")
+            print(f"[系统]: ===== 所有生成方案汇总 =====")
+            for plan_name, solution in solutions.items():
+                if solution is not None and not solution.empty:
+                    print(f"✓ {plan_name}:")
+                    print(f"  - 调整航班数: {len(solution)}")
+                    action_counts = solution['adjustment_action'].value_counts() if 'adjustment_action' in solution.columns else {}
+                    for action, count in action_counts.items():
+                        print(f"  - {action}: {count} 架次")
+                else:
+                    print(f"✗ {plan_name}: 生成失败")
+            print(f"[系统]: =============================")
+            
             chosen_plan_name, final_plan = self.master_agent.interpret_and_present_solutions(solutions)
+            
+            # 存储处理结果供API使用
+            self.last_solutions = solutions
+            self.last_chosen_plan_name = chosen_plan_name
+            self.last_final_plan = final_plan
             
             if final_plan is None or final_plan.empty:
                 print("[系统]: 未能决策出最终方案，流程终止。")
@@ -71,15 +103,18 @@ class FlightAdjustmentSystem:
                 print("[系统]: 执行失败，流程异常终止。")
                 return False
             
-            # 获取执行状态
+                        # 获取执行状态
             execution_status = self.executor_agent.get_execution_status()
+            
+            # 存储执行摘要
+            self.last_execution_summary = execution_status
             
             # 6. 报告智能体生成本次事件的复盘报告
             print("[系统]: 步骤6 - 生成复盘报告")
             final_report = self.writer_agent.generate_report(
-                event_description, 
-                chosen_plan_name, 
-                final_plan, 
+                event_description,
+                chosen_plan_name,
+                final_plan,
                 execution_status.get('latest_summary') if execution_status != "无执行记录" else None
             )
             
@@ -91,6 +126,15 @@ class FlightAdjustmentSystem:
             print(f"[系统]: 系统运行异常: {e}")
             print(f"{'='*20} 事件处理异常终止 {'='*20}")
             return False
+    
+    def get_last_results(self):
+        """获取最后一次处理的完整结果"""
+        return {
+            'solutions': self.last_solutions,
+            'chosen_plan_name': self.last_chosen_plan_name,
+            'final_plan': self.last_final_plan,
+            'execution_summary': self.last_execution_summary
+        }
     
 
 

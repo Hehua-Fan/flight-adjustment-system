@@ -41,6 +41,7 @@ class OptimizationRequest(BaseModel):
     weights: Dict[str, WeightConfig]
     cdm_data_file: Optional[str] = Field(default=None, description="CDM数据文件路径")
     constraint_dir: Optional[str] = Field(default=None, description="约束数据目录")
+    test_mode: bool = Field(default=False, description="是否启用测试模式（仅处理前100行数据）")
 
 class FlightAdjustment(BaseModel):
     """航班调整结果模型"""

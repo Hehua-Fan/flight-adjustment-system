@@ -1,4 +1,4 @@
-# 航班调整系统 (Flight Adjustment System)
+# ✈️ 航班调整系统 (Flight Adjustment System)
 
 一个基于AI智能体和运筹优化的航班调整系统，能够智能分析航空运营事件并生成最优的航班调整方案。
 
@@ -6,8 +6,7 @@
 
 ### 一键启动（推荐）
 ```bash
-# 同时启动前后端服务
-make dev
+make dev # 同时启动前后端服务
 ```
 
 访问地址：
@@ -15,25 +14,6 @@ make dev
 - **后端API**: http://localhost:8000 - RESTful API服务  
 - **API文档**: http://localhost:8000/docs - 自动生成的接口文档
 
-### 其他常用命令
-```bash
-make help      # 查看所有可用命令
-make install   # 安装项目依赖
-make status    # 检查服务状态
-make stop      # 停止所有服务
-make clean     # 清理临时文件
-make restart   # 重启所有服务
-```
-
-### 手动启动（高级用户）
-如果需要单独启动服务：
-```bash
-# 启动前端
-make frontend
-
-# 启动后端
-make backend
-```
 
 ## 🎯 系统概述
 

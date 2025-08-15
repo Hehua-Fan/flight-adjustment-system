@@ -23,14 +23,25 @@ class MasterAgent:
         """分析事件并生成多套权重方案"""
         print(f"[MasterAgent]: 正在分析事件: '{event_description}'")
         
-        # 可以调用LLM来智能分析事件类型
-        llm_prompt = f"""
-        请分析以下航班调度事件，并判断事件类型和严重程度：
-        事件描述: {event_description}
+        # 开发模式：跳过LLM调用以避免网络问题
+        DEV_MODE = True  # 在生产环境中设置为 False
         
-        请返回事件分析结果。
-        """
-        analysis = self.invoke(llm_prompt)
+        if DEV_MODE:
+            print("[MasterAgent]: 开发模式 - 跳过LLM分析，使用基于关键词的分析")
+            analysis = f"基于关键词分析的事件: {event_description}"
+        else:
+            # 可以调用LLM来智能分析事件类型
+            llm_prompt = f"""
+            请分析以下航班调度事件，并判断事件类型和严重程度：
+            事件描述: {event_description}
+            
+            请返回事件分析结果。
+            """
+            try:
+                analysis = self.invoke(llm_prompt)
+            except Exception as e:
+                print(f"[MasterAgent]: LLM调用失败，使用备用分析: {e}")
+                analysis = f"LLM调用失败，基于关键词分析的事件: {event_description}"
         
         # 基于事件类型生成权重方案（包含6种调整动作）
         if "流量控制" in event_description:
