@@ -286,7 +286,7 @@ export default function PlanLibraryPage() {
             <div className="overflow-x-auto">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-900">
+                  <tr className="border-b border-gray-200 bg-black">
                     <th className="px-3 py-2 text-left text-xs font-medium text-white uppercase tracking-wider w-12">
                       <Checkbox
                         checked={isAllSelected}

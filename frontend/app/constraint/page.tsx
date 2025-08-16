@@ -409,7 +409,7 @@ export default function ConstraintPage() {
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-900">
+                    <tr className="border-b border-gray-200 bg-black">
                       {columns.map((column) => (
                         <th
                           key={column.key}

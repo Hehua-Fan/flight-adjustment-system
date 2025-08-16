@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { navigationConfig, NavigationItem } from '@/config/navigation';
+import Image from 'next/image';
 
 interface SidebarProps {
   activeTab?: string;
@@ -36,11 +37,9 @@ export function Sidebar({
   };
 
   return (
-    <div className="w-50 bg-[#f8f8f7] backdrop-blur-sm shadow-lg flex flex-col">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          AI+运行
-        </h1>
+    <div className="w-50 bg-[#faf9f6] backdrop-blur-sm shadow-lg flex flex-col">
+      <div className="p-6 flex justify-center">
+        <Image src="/logo.png" alt="logo" width={80} height={80} className="cursor-pointer" onClick={() => router.push('/')} />
       </div>
       
       <nav className="flex-1 p-4 space-y-4">
@@ -59,10 +58,10 @@ export function Sidebar({
                   <button
                     key={item.id}
                     onClick={() => handleItemClick(item)}
-                    className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 text-left ${
+                    className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 text-left cursor-pointer ${
                       isActive
-                        ? 'bg-[#e5e5e5] text-black font-medium'
-                        : 'hover:bg-[#f3f4f6] text-gray-700'
+                        ? 'bg-[#f1eee6] text-black font-medium'
+                        : 'hover:bg-[#f1eee6] text-gray-700'
                     }`}
                   >
                     <item.icon 

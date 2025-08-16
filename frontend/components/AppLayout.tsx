@@ -20,7 +20,7 @@ export function ClientLayoutWrapper({ children }: ClientLayoutWrapperProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-[#faf9f6]">
       <div className="h-screen flex">
         {/* 侧边栏 */}
         <Sidebar />
@@ -43,7 +43,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-[#faf9f6]">
       <Sidebar />
       <div className="flex-1 overflow-auto">
         {children}

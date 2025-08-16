@@ -43,7 +43,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-[#faf9f6]">
       <div className="h-screen flex">
         {/* 侧边栏 */}
         <Sidebar
