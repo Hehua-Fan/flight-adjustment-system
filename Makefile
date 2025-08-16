@@ -33,20 +33,20 @@ dev:
 # 启动前端开发服务器
 frontend:
 	@echo "🎨 启动前端开发服务器..."
-	cd src/frontend && npm run dev
+	cd frontend && npm run dev
 
 # 启动后端开发服务器
 backend:
 	@echo "⚙️  启动后端API服务器..."
-	cd src/backend && python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+	cd backend && python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 # 安装所有依赖
 install:
 	@echo "📦 安装项目依赖..."
 	@echo "1. 安装Python依赖..."
-	pip install -r requirements.txt
+	cd backend && pip install -r requirements.txt
 	@echo "2. 安装前端依赖..."
-	cd src/frontend && npm install
+	cd frontend && npm install
 	@echo "✅ 所有依赖安装完成！"
 
 # 清理临时文件
@@ -82,15 +82,5 @@ restart: stop
 # 生产环境构建
 build:
 	@echo "🏗️  构建生产版本..."
-	cd src/frontend && npm run build
+	cd frontend && npm run build
 	@echo "✅ 前端构建完成！"
-
-# 运行测试
-test:
-	@echo "🧪 运行测试..."
-	@echo "暂未配置测试，请手动测试系统功能"
-
-# 查看日志
-logs:
-	@echo "📋 查看服务日志..."
-	@echo "请查看终端输出或使用 make dev 启动服务"
